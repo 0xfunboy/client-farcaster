@@ -490,7 +490,7 @@ export class FarcasterPostClient {
   }
 }
 
-// alias per compat con plugin copy-paste dal client-twitter
+// alias for compatibility with client-twitter copy/paste plugins
 export const TwitterPostClient = FarcasterPostClient;
 
 export function __testOnly_createRateLimiter() {

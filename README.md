@@ -1,68 +1,68 @@
 # @elizaos/client-farcaster
 
-Client Farcaster per ElizaOS con adapter Neynar, coda persistente, priorita `news > trade`,
-modalita sink condivisa con Twitter/Moltbook, e loop interazioni con fallback free-plan.
+Farcaster client for ElizaOS with a Neynar adapter, persistent queue, `news > trade` priority,
+shared sink mode with Twitter/Moltbook, and interaction loops with free-plan-safe fallback behavior.
 
-## Cosa fa
+## What it does
 
-- Pubblica cast su Farcaster (`createCast`, `replyToCast`).
-- Consuma post da coda condivisa (`farcaster:queue:<agentId>`) per evitare generazioni LLM duplicate.
-- Mantiene stato locale JSON (queue, rate, processed interactions) in `src/plugins/**`.
-- Gestisce rate limit:
-  - limiti hour/day applicativi.
-  - pacing richieste `cast` (free plan).
-  - backoff automatico su `429` con `Retry-After`.
-- Gestisce split in thread per cast lunghi con limiti protocollo:
-  - non-Pro: clamp/split a 300 caratteri.
-  - Pro: fino a 1024 (configurabile).
-- Supporta embed immagine da approval Discord (URL `media.discordapp.net`) sul primo cast del thread.
+- Publishes casts on Farcaster (`createCast`, `replyToCast`).
+- Consumes posts from a shared queue (`farcaster:queue:<agentId>`) to avoid duplicate LLM generation.
+- Persists local JSON state (queue, rate snapshots, processed interactions) in `src/plugins/**`.
+- Handles rate limiting:
+  - app-level hourly/daily caps.
+  - request pacing for cast publishing (free plan safe).
+  - automatic `429` backoff with `Retry-After`.
+- Splits long content into thread chunks with protocol-aware limits:
+  - non-Pro: clamp/split to 300 chars.
+  - Pro: up to 1024 chars (configurable).
+- Supports image embeds from Discord approval messages (`media.discordapp.net`) on the first cast in a thread.
 
-## Architettura rapida
+## Architecture overview
 
 - `src/base.ts`
-  - adapter API Neynar + fallback Hub.
-  - publish/reply con retry/backoff.
+  - Neynar API adapter + Hub fallback.
+  - publish/reply with retry and backoff.
 - `src/post.ts`
-  - coda persistente, import shared-queue, priorita `news > trade`, scheduler post.
+  - persistent queue, shared-queue import, `news > trade` prioritization, posting scheduler.
 - `src/interactions.ts`
-  - mentions/replies polling, filtri anti-loop, risposta LLM in thread.
+  - mentions/replies polling, anti-loop filters, LLM reply generation in-thread.
 - `src/farcasterQueue.ts`
-  - schema queue cross-client (news/trade/other + embedUrl).
+  - cross-client queue schema (`news/trade/other` + `embedUrl`).
 - `src/environment.ts`
-  - parsing env + defaults + validazione.
+  - env parsing, defaults, and validation.
 
-## Modalita operative
+## Operating modes
 
-### 1) Sink mode (consigliata)
+### 1) Sink mode (recommended)
 
 `FARCASTER_SINK_MODE=true`
 
-Farcaster non genera post da solo: consuma output upstream (es. Twitter approval/news pipeline).
-Questo mantiene una singola origine contenuti multi-client.
+Farcaster does not generate independent posts; it consumes upstream output
+(for example Twitter approval/news pipeline), keeping a single content origin across clients.
 
-### 2) Source plugins (opzionale)
+### 2) Source plugins (optional)
 
 `FARCASTER_ENABLE_SOURCE_PLUGINS=true`
 
-Abilita plugin locali `mostMentionedTicker` / `autoTradingTicker` anche su Farcaster.
-Tipicamente da lasciare `false` in setup shared-origin.
+Enables local `mostMentionedTicker` / `autoTradingTicker` plugins directly in Farcaster.
+Usually keep this `false` in shared-origin setups.
 
 ## Setup
 
-1. Installa dipendenze dal workspace Eliza.
-2. Configura env (vedi `.env.example`).
-3. Nel character JSON aggiungi:
+1. Install dependencies from the Eliza workspace.
+2. Configure env vars (see `.env.example`).
+3. Add to your character JSON:
    - `"clients": ["farcaster"]`
-4. Avvia l'agent:
+4. Start the agent:
    - `pnpm start dev --character="characters/<your.character>.json"`
 
-## Variabili env
+## Environment variables
 
-### Obbligatorie
+### Required
 
 - `FARCASTER_ENABLED`
-- `FARCASTER_API_KEY` (oppure `FARCASTER_NEYNAR_API_KEY`)
-- `FARCASTER_SIGNER_UUID` (oppure `FARCASTER_NEYNAR_SIGNER_UUID`)
+- `FARCASTER_API_KEY` (or `FARCASTER_NEYNAR_API_KEY`)
+- `FARCASTER_SIGNER_UUID` (or `FARCASTER_NEYNAR_SIGNER_UUID`)
 - `FARCASTER_FID`
 
 ### Core
@@ -73,14 +73,14 @@ Tipicamente da lasciare `false` in setup shared-origin.
 - `FARCASTER_ENABLE_AUTONOMOUS_POST_GENERATION`
 - `FARCASTER_PROTOCOL_PRO`
 
-### Endpoint e plan
+### Endpoints and plan flags
 
 - `FARCASTER_ENABLE_PAID_ENDPOINTS`
 - `FARCASTER_ENABLE_PAID_CAST_SEARCH`
 - `FARCASTER_ENABLE_PAID_CAST_CONVERSATION`
 - `FARCASTER_ENABLE_HUB_FALLBACK`
 
-### Posting / rate
+### Posting / rate controls
 
 - `FARCASTER_MAX_POSTS_PER_HOUR`
 - `FARCASTER_MAX_POSTS_PER_DAY`
@@ -90,7 +90,7 @@ Tipicamente da lasciare `false` in setup shared-origin.
 - `FARCASTER_NEWS_PRIORITY_WEIGHT`
 - `FARCASTER_TRADE_PRIORITY_WEIGHT`
 
-### Interazioni
+### Interaction controls
 
 - `FARCASTER_ENABLE_ACTION_PROCESSING`
 - `FARCASTER_ACTION_INTERVAL`
@@ -103,13 +103,13 @@ Tipicamente da lasciare `false` in setup shared-origin.
 - `FARCASTER_IGNORE_BOT_AUTHORS`
 - `FARCASTER_PROCESSED_MESSAGE_TTL_MS`
 
-### Targeting opzionale
+### Optional targeting
 
 - `FARCASTER_TARGET_USERS`
 - `FARCASTER_TARGET_FIDS`
 - `FARCASTER_TARGET_TOPICS`
 
-## Free plan Neynar: impostazioni consigliate
+## Recommended settings for Neynar free plan
 
 - `FARCASTER_ENABLE_PAID_ENDPOINTS=false`
 - `FARCASTER_ENABLE_PAID_CAST_SEARCH=false`
@@ -120,9 +120,7 @@ Tipicamente da lasciare `false` in setup shared-origin.
 - `FARCASTER_PROTOCOL_PRO=false`
 - `FARCASTER_MAX_CAST_LENGTH=300`
 
-## Persistenza stati
-
-File principali:
+## Persistent state files
 
 - `src/plugins/postNewsJSON/postQueueState.json`
 - `src/plugins/postNewsJSON/rateLimitState.json`
@@ -133,21 +131,21 @@ File principali:
 
 - `pnpm -C packages/client-farcaster build`
 
-Output in `dist/`.
+Build output is generated in `dist/`.
 
 ## Troubleshooting
 
 - `400 Requires Farcaster protocol Pro subscription`
-  - cast troppo lungo senza Pro.
-  - lascia `FARCASTER_PROTOCOL_PRO=false` e `FARCASTER_MAX_CAST_LENGTH=300`.
+  - cast is too long for non-Pro.
+  - keep `FARCASTER_PROTOCOL_PRO=false` and `FARCASTER_MAX_CAST_LENGTH=300`.
 - `429 Rate limit exceeded /v2/farcaster/cast`
-  - aumenta `FARCASTER_CAST_REQUEST_MIN_INTERVAL_MS` (es. 12000-15000).
-- `402 Payment Required` su search/conversation
-  - endpoint paid: lascia `FARCASTER_ENABLE_PAID_* = false`.
-- queue bloccata ma senza errori
-  - controlla warning quota hour/day e attesa finestra successiva.
+  - increase `FARCASTER_CAST_REQUEST_MIN_INTERVAL_MS` (for example `12000-15000`).
+- `402 Payment Required` on search/conversation
+  - paid endpoints are disabled on free plans; keep `FARCASTER_ENABLE_PAID_* = false`.
+- queue appears stuck with no hard errors
+  - check hourly/daily quota warnings and wait for the next window.
 
-## Note sicurezza
+## Security notes
 
-- Non loggare mai API keys complete.
-- Evita commit di `.env` con credenziali reali.
+- Never log full API keys.
+- Never commit real secrets in `.env`.
