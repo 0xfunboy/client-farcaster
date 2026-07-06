@@ -1,3 +1,11 @@
+<div align="center">
+
+<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=160&section=header&text=client-farcaster&fontSize=42&fontColor=fff&animation=fadeIn&fontAlignY=38&desc=Eliza%20OS%20package%20compatibile%20Client%20Farcaster%20for%20Free%20and%20Verified%20account&descAlignY=60&descSize=14" width="100%"/>
+
+<img src="https://skillicons.dev/icons?i=ts,js,nodejs&theme=dark" alt="Tech stack"/>
+
+</div>
+
 # @elizaos/client-farcaster
 
 Farcaster client for ElizaOS with a Neynar adapter, persistent queue, `news > trade` priority,
